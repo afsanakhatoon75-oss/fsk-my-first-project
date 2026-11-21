@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to PDF Converter</title>
+    <!-- jsPDF Library -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #eef2f3; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 420px; }
+        h2 { color: #333; margin-bottom: 10px; }
+        p { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+        input[type="file"] { margin-bottom: 20px; width: 100%; padding: 10px; border: 2px dashed #3498db; border-radius: 8px; cursor: pointer; }
+        button { background: #3498db; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
+        button:hover { background: #2980b9; }
+        #status { margin-top: 15px; font-size: 0.9rem; color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>📄 Image to PDF Converter</h2>
+        <p>Apni photos select karein aur ek click mein PDF banayein</p>
+        <input type="file" id="imageInput" accept="image/*" multiple>
+        <button onclick="convertToPDF()">Download PDF</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function convertToPDF() {
+            const input = document.getElementById('imageInput');
+            const status = document.getElementById('status');
+            if (input.files.length === 0) {
+                alert("Kripya pehle kam se kam ek photo select karein!");
+                return;
+            }
+            status.innerText = "PDF ban rahi hai...";
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            for (let i = 0; i < input.files.length; i++) {
+                const file = input.files[i];
+                const imgData = await readFileAsDataURL(file);
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            pdf.save("My-Converted-Images.pdf");
+            status.innerText = "✅ PDF successfully download ho gayi!";
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

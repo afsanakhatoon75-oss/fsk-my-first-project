@@ -4,100 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image to PDF Converter</title>
-    <script src="https://jsdelivr.net"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: #eef2f3; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 420px; }
+        .box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 450px; }
         h2 { color: #333; margin-bottom: 10px; }
         p { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
-        input[type="file"] { margin-bottom: 20px; width: 100%; padding: 10px; border: 2px dashed #3498db; border-radius: 8px; cursor: pointer; }
-        button { background: #3498db; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
-        button:hover { background: #2980b9; }
-        #status { margin-top: 15px; font-size: 0.95rem; font-weight: bold; }
-        .dl-link { display: inline-block; margin-top: 15px; background: #27ae60; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; width: 100%; }
+        input[type="file"] { margin-bottom: 15px; width: 100%; padding: 10px; border: 2px dashed #3498db; border-radius: 8px; cursor: pointer; }
+        #preview { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        #preview img { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+        button { background: #27ae60; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
+        button:hover { background: #219150; }
+        #printArea { display: none; }
+
+        /* Print / Save as PDF mode */
+        @media print {
+            body { background: #fff; padding: 0; display: block; }
+            .box { display: none !important; }
+            #printArea { display: block !important; }
+            #printArea img { width: 100%; max-height: 100vh; object-fit: contain; page-break-after: always; display: block; margin: 0 auto; }
+        }
     </style>
 </head>
 <body>
     <div class="box">
         <h2>📄 Image to PDF Converter</h2>
-        <p>Apni photos select karein aur ek click mein PDF banayein</p>
-        <input type="file" id="imageInput" accept="image/*" multiple>
-        <button onclick="convertToPDF()">Convert to PDF</button>
-        <div id="status"></div>
-        <div id="downloadArea"></div>
+        <p>Photos select karein, preview dekhein aur PDF save karein</p>
+        <input type="file" id="imageInput" accept="image/*" multiple onchange="showPreview()">
+        <div id="preview"></div>
+        <button onclick="saveAsPDF()">Create & Save PDF</button>
     </div>
 
-    <script>
-        async function convertToPDF() {
-            const input = document.getElementById('imageInput');
-            const status = document.getElementById('status');
-            const downloadArea = document.getElementById('downloadArea');
-            downloadArea.innerHTML = '';
+    <div id="printArea"></div>
 
+    <script>
+        function showPreview() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('preview');
+            const printArea = document.getElementById('printArea');
+            preview.innerHTML = '';
+            printArea.innerHTML = '';
+
+            Array.from(input.files).forEach(file => {
+                const url = URL.createObjectURL(file);
+                
+                const thumb = document.createElement('img');
+                thumb.src = url;
+                preview.appendChild(thumb);
+
+                const fullImg = document.createElement('img');
+                fullImg.src = url;
+                printArea.appendChild(fullImg);
+            });
+        }
+
+        function saveAsPDF() {
+            const input = document.getElementById('imageInput');
             if (input.files.length === 0) {
                 alert("Kripya pehle kam se kam ek photo select karein!");
                 return;
             }
-            if (!window.jspdf) {
-                status.style.color = "red";
-                status.innerText = "❌ Library load nahi hui, internet check karke refresh karein.";
-                return;
-            }
-
-            try {
-                status.style.color = "#2980b9";
-                status.innerText = "PDF ban rahi hai...";
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF();
-
-                for (let i = 0; i < input.files.length; i++) {
-                    const file = input.files[i];
-                    const imgData = await processImage(file);
-                    const imgProps = pdf.getImageProperties(imgData);
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-                    if (i > 0) pdf.addPage();
-                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                }
-
-                const pdfBlob = pdf.output('blob');
-                const blobUrl = URL.createObjectURL(pdfBlob);
-
-                status.style.color = "#27ae60";
-                status.innerText = "✅ PDF Taiyar Hai!";
-                downloadArea.innerHTML = `<a href="${blobUrl}" download="My-Converted-Images.pdf" class="dl-link">⬇️ Save PDF File</a>`;
-            } catch (err) {
-                status.style.color = "red";
-                status.innerText = "❌ Error: " + err.message;
-            }
-        }
-
-        function processImage(file) {
-            return new Promise((resolve, reject) => {
-                const url = URL.createObjectURL(file);
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const maxDim = 1600;
-                    let w = img.width, h = img.height;
-                    if (w > maxDim || h > maxDim) {
-                        if (w > h) { h = (h * maxDim) / w; w = maxDim; }
-                        else { w = (w * maxDim) / h; h = maxDim; }
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.drawImage(img, 0, 0, w, h);
-                    URL.revokeObjectURL(url);
-                    resolve(canvas.toDataURL('image/jpeg', 0.85));
-                };
-                img.onerror = () => reject(new Error("Photo load nahi ho saki"));
-                img.src = url;
-            });
+            window.print();
         }
     </script>
 </body>
